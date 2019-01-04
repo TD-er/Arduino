@@ -195,7 +195,16 @@ uint8_t EspClass::getCpuFreqMHz(void)
 
 uint32_t EspClass::getFlashChipId(void)
 {
-    return spi_flash_get_id();
+    static uint32_t flash_chip_id = 0;
+    if (flash_chip_id == 0) {
+        flash_chip_id = spi_flash_get_id();
+    }
+    return flash_chip_id;
+}
+
+uint8_t EspClass::getFlashChipVendorId(void)
+{
+    return (getFlashChipId() & 0x000000ff);
 }
 
 uint32_t EspClass::getFlashChipRealSize(void)
@@ -507,9 +516,61 @@ bool EspClass::flashEraseSector(uint32_t sector) {
     return rc == 0;
 }
 
+#if PUYA_SUPPORT
+static int spi_flash_write_puya(uint32_t offset, uint32_t *data, size_t size) {
+    if (data == nullptr) {
+      return 1; // SPI_FLASH_RESULT_ERR
+    }
+    // PUYA flash chips need to read existing data, update in memory and write modified data again.
+    static uint32_t *flash_write_puya_buf = nullptr;
+    int rc = 0;
+    uint32_t* ptr = data;
+
+    if (flash_write_puya_buf == nullptr) {
+        flash_write_puya_buf = (uint32_t*) malloc(PUYA_BUFFER_SIZE);
+        // No need to ever free this, since the flash chip will never change at runtime.
+        if (flash_write_puya_buf == nullptr) {
+            // Memory could not be allocated.
+            return 1; // SPI_FLASH_RESULT_ERR
+        }
+    }
+    size_t bytesLeft = size;
+    uint32_t pos = offset;
+    while (bytesLeft > 0 && rc == 0) {
+        size_t bytesNow = bytesLeft;
+        if (bytesNow > PUYA_BUFFER_SIZE) {
+            bytesNow = PUYA_BUFFER_SIZE;
+            bytesLeft -= PUYA_BUFFER_SIZE;
+        } else {
+            bytesLeft = 0;
+        }
+        rc = spi_flash_read(pos, flash_write_puya_buf, bytesNow);
+        if (rc != 0) {
+            return rc;
+        }
+        for (size_t i = 0; i < bytesNow / 4; ++i) {
+            flash_write_puya_buf[i] &= *ptr;
+            ++ptr;
+        }
+        rc = spi_flash_write(pos, flash_write_puya_buf, bytesNow);
+        pos += bytesNow;
+    }
+    return rc;
+}
+#endif
+
 bool EspClass::flashWrite(uint32_t offset, uint32_t *data, size_t size) {
     ets_isr_mask(FLASH_INT_MASK);
-    int rc = spi_flash_write(offset, (uint32_t*) data, size);
+    int rc = 0;
+#if PUYA_SUPPORT
+    if (getFlashChipVendorId() == SPI_FLASH_VENDOR_PUYA) {
+        rc = spi_flash_write_puya(offset, data, size);
+    }
+    else
+#endif
+    {
+        rc = spi_flash_write(offset, data, size);
+    }
     ets_isr_unmask(FLASH_INT_MASK);
     return rc == 0;
 }
