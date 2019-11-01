@@ -589,7 +589,7 @@ void ESP8266WiFiMesh::attemptTransmission(const String &message, bool concluding
 
         if(currentNetwork.networkIndex != NETWORK_INFO_DEFAULT_INT)
         {
-          verboseModePrint(String('(') + String(WiFi.RSSI(currentNetwork.networkIndex)) + String(F("dBm) ")) +
+          verboseModePrint('(' + String(WiFi.RSSI(currentNetwork.networkIndex)) + String(F("dBm) ")) + 
                            (WiFi.encryptionType(currentNetwork.networkIndex) == ENC_TYPE_NONE ? String(F("open")) : ""), false);
         }
 
@@ -664,7 +664,7 @@ void ESP8266WiFiMesh::acceptRequest()
       /* Send the response back to the client */
       if (_client.connected())
       {
-        verboseModePrint("Responding"); // Not storing strings in flash (via F()) to avoid performance impacts when using the string.
+        verboseModePrint("Responding");  // Not storing strings in flash (via F()) to avoid performance impacts when using the string.
         _client.print(response + '\r');
         _client.flush();
         yield();
