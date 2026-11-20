@@ -54,12 +54,5 @@ class ESP8266HTTPUpdateServerTemplate
 
 using ESP8266HTTPUpdateServer = esp8266httpupdateserver::ESP8266HTTPUpdateServerTemplate<WiFiServer>;
 
-namespace BearSSL {
-using ESP8266HTTPUpdateServerSecure = esp8266httpupdateserver::ESP8266HTTPUpdateServerTemplate<WiFiServerSecure>;
-};
-
-namespace axTLS {
-using ESP8266HTTPUpdateServerSecure = esp8266httpupdateserver::ESP8266HTTPUpdateServerTemplate<WiFiServerSecure>;
-};
 
 #endif
